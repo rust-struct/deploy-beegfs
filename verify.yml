@@ -1,0 +1,227 @@
+---
+# =============================================================================
+# Верификация деплоя BeeGFS
+# Запуск: ansible-playbook -i inventory/hosts.ini verify.yml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PLAY 1: Проверка сервисов на каждом узле
+# -----------------------------------------------------------------------------
+- name: "VERIFY | Services"
+  hosts: beegfs
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check beegfs-mgmtd is active
+      command: systemctl is-active beegfs-mgmtd
+      changed_when: false
+      register: _mgmtd_status
+      when: inventory_hostname in groups['beegfs_mgmtd']
+
+    - name: Assert beegfs-mgmtd is active
+      assert:
+        that: _mgmtd_status.stdout == "active"
+        fail_msg: "beegfs-mgmtd is NOT active on {{ inventory_hostname }} (state: {{ _mgmtd_status.stdout }})"
+        success_msg: "beegfs-mgmtd is active on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['beegfs_mgmtd']
+
+    - name: Check beegfs-meta is active
+      command: systemctl is-active beegfs-meta
+      changed_when: false
+      register: _meta_status
+      when: inventory_hostname in groups['beegfs_meta']
+
+    - name: Assert beegfs-meta is active
+      assert:
+        that: _meta_status.stdout == "active"
+        fail_msg: "beegfs-meta is NOT active on {{ inventory_hostname }} (state: {{ _meta_status.stdout }})"
+        success_msg: "beegfs-meta is active on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['beegfs_meta']
+
+    - name: Check beegfs-storage is active
+      command: systemctl is-active beegfs-storage
+      changed_when: false
+      register: _storage_status
+      when: inventory_hostname in groups['beegfs_storage']
+
+    - name: Assert beegfs-storage is active
+      assert:
+        that: _storage_status.stdout == "active"
+        fail_msg: "beegfs-storage is NOT active on {{ inventory_hostname }} (state: {{ _storage_status.stdout }})"
+        success_msg: "beegfs-storage is active on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['beegfs_storage']
+
+    - name: Check beegfs-client is active
+      command: systemctl is-active beegfs-client
+      changed_when: false
+      register: _client_status
+      when: inventory_hostname in groups['beegfs_client']
+
+    - name: Assert beegfs-client is active
+      assert:
+        that: _client_status.stdout == "active"
+        fail_msg: "beegfs-client is NOT active on {{ inventory_hostname }} (state: {{ _client_status.stdout }})"
+        success_msg: "beegfs-client is active on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['beegfs_client']
+
+# -----------------------------------------------------------------------------
+# PLAY 2: Проверка монтирования и storage target на каждом узле
+# -----------------------------------------------------------------------------
+- name: "VERIFY | Mounts and storage targets"
+  hosts: beegfs
+  become: true
+  gather_facts: false
+  vars:
+    beegfs_client_mount: /mnt/beegfs
+    beegfs_storage_dir: /data/beegfs_storage
+  tasks:
+    - name: Check BeeGFS client is mounted
+      command: mountpoint -q {{ beegfs_client_mount }}
+      changed_when: false
+      register: _mount_check
+      failed_when: false
+      when: inventory_hostname in groups['beegfs_client']
+
+    - name: Assert BeeGFS client is mounted
+      assert:
+        that: _mount_check.rc == 0
+        fail_msg: "BeeGFS is NOT mounted at {{ beegfs_client_mount }} on {{ inventory_hostname }}"
+        success_msg: "BeeGFS is mounted at {{ beegfs_client_mount }} on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['beegfs_client']
+
+    - name: Show BeeGFS filesystem info (df -hT)
+      command: df -hT {{ beegfs_client_mount }}
+      changed_when: false
+      register: _df_output
+      when: inventory_hostname in groups['beegfs_client']
+
+    - name: Print df output
+      debug:
+        msg: "{{ _df_output.stdout_lines }}"
+      when: inventory_hostname in groups['beegfs_client']
+
+    - name: Check storage target directory is accessible
+      stat:
+        path: "{{ beegfs_storage_dir }}"
+      register: _storage_dir
+      when: inventory_hostname in groups['beegfs_storage']
+
+    - name: Assert storage target directory exists and is a directory
+      assert:
+        that:
+          - _storage_dir.stat.exists
+          - _storage_dir.stat.isdir
+        fail_msg: "Storage target directory {{ beegfs_storage_dir }} is missing on {{ inventory_hostname }}"
+        success_msg: "Storage target directory exists on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['beegfs_storage']
+
+# -----------------------------------------------------------------------------
+# PLAY 3: Cluster health с management-узла (nodeA)
+# Как в лабе: beegfs health check / capacity / node list --with-nics
+# -----------------------------------------------------------------------------
+- name: "VERIFY | Cluster health (from management node)"
+  hosts: beegfs_mgmtd
+  become: true
+  gather_facts: false
+  vars:
+    # Ожидаемое количество storage nodes в кластере
+    beegfs_expected_storage_nodes: "{{ groups['beegfs_storage'] | length }}"
+    beegfs_expected_meta_nodes: "{{ groups['beegfs_meta'] | length }}"
+  tasks:
+    - name: Run beegfs health check
+      command: beegfs health check
+      changed_when: false
+      register: _health_check
+      failed_when: false
+
+    - name: Print health check output
+      debug:
+        msg: "{{ _health_check.stdout_lines }}"
+
+    - name: Assert no failures in health check
+      assert:
+        that: "'FAILED' not in _health_check.stdout | upper"
+        fail_msg: "beegfs health check reported failures:\n{{ _health_check.stdout }}"
+        success_msg: "beegfs health check passed"
+
+    - name: Run beegfs health capacity
+      command: beegfs health capacity
+      changed_when: false
+      register: _health_capacity
+
+    - name: Print capacity output
+      debug:
+        msg: "{{ _health_capacity.stdout_lines }}"
+
+    - name: List BeeGFS nodes with NICs
+      command: beegfs node list --with-nics
+      changed_when: false
+      register: _node_list
+
+    - name: Print node list
+      debug:
+        msg: "{{ _node_list.stdout_lines }}"
+
+    - name: Check expected number of storage nodes are registered
+      command: beegfs-ctl --listnodes --nodetype=storage
+      changed_when: false
+      register: _storage_nodes
+
+    - name: Assert expected storage nodes count
+      assert:
+        that: >
+          _storage_nodes.stdout_lines | select('match', '^\\s*\\S') | list | length
+          >= beegfs_expected_storage_nodes | int
+        fail_msg: >
+          Expected {{ beegfs_expected_storage_nodes }} storage nodes,
+          got: {{ _storage_nodes.stdout }}
+        success_msg: "All {{ beegfs_expected_storage_nodes }} storage nodes are registered"
+
+    - name: Check expected number of metadata nodes are registered
+      command: beegfs-ctl --listnodes --nodetype=meta
+      changed_when: false
+      register: _meta_nodes
+
+    - name: Assert expected metadata nodes count
+      assert:
+        that: >
+          _meta_nodes.stdout_lines | select('match', '^\\s*\\S') | list | length
+          >= beegfs_expected_meta_nodes | int
+        fail_msg: >
+          Expected {{ beegfs_expected_meta_nodes }} metadata nodes,
+          got: {{ _meta_nodes.stdout }}
+        success_msg: "All {{ beegfs_expected_meta_nodes }} metadata nodes are registered"
+
+# -----------------------------------------------------------------------------
+# PLAY 4: Smoke test — запись и чтение файла через BeeGFS
+# -----------------------------------------------------------------------------
+- name: "VERIFY | Smoke test — write/read via BeeGFS"
+  hosts: beegfs_client
+  become: true
+  gather_facts: false
+  vars:
+    beegfs_client_mount: /mnt/beegfs
+    _test_file: "{{ beegfs_client_mount }}/.ansible_verify_{{ inventory_hostname }}"
+    _test_content: "beegfs-verify-{{ inventory_hostname }}-{{ ansible_date_time.iso8601 | default('ok') }}"
+  tasks:
+    - name: Write test file to BeeGFS
+      copy:
+        content: "{{ _test_content }}\n"
+        dest: "{{ _test_file }}"
+        mode: "0644"
+
+    - name: Read test file back
+      slurp:
+        src: "{{ _test_file }}"
+      register: _read_back
+
+    - name: Assert file content matches
+      assert:
+        that: (_read_back.content | b64decode | trim) == _test_content
+        fail_msg: "Read-back content mismatch on {{ inventory_hostname }}"
+        success_msg: "Write/read test passed on {{ inventory_hostname }}"
+
+    - name: Remove test file
+      file:
+        path: "{{ _test_file }}"
+        state: absent

@@ -1,0 +1,31 @@
+---
+- name: Install prerequisites for repository setup
+  apt:
+    name:
+      - apt-transport-https
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Download BeeGFS GPG key
+  get_url:
+    url: "https://www.beegfs.io/release/beegfs_{{ beegfs_version }}/gpg/GPG-KEY-beegfs"
+    dest: /tmp/GPG-KEY-beegfs
+    mode: "0644"
+    force: false
+
+- name: Dearmor and install BeeGFS GPG key
+  shell: gpg --dearmor < /tmp/GPG-KEY-beegfs > /usr/share/keyrings/beegfs.gpg
+  args:
+    creates: /usr/share/keyrings/beegfs.gpg
+
+- name: Add BeeGFS apt repository
+  apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/beegfs.gpg arch=amd64]
+      https://www.beegfs.io/release/beegfs_{{ beegfs_version }}/dists/{{ beegfs_dist_codename }}
+      {{ beegfs_dist_codename }} non-free
+    state: present
+    filename: beegfs
+    update_cache: true

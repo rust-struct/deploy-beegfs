@@ -1,0 +1,22 @@
+---
+- name: Set sysMgmtdHost in beegfs-client.conf
+  replace:
+    path: /etc/beegfs/beegfs-client.conf
+    regexp: '^sysMgmtdHost\s*=.*'
+    replace: 'sysMgmtdHost = {{ beegfs_mgmt_host }}'
+  notify: restart beegfs-client
+
+- name: Create client mount point
+  file:
+    path: "{{ beegfs_client_mount }}"
+    state: directory
+    mode: "0755"
+
+- name: Configure beegfs-mounts.conf
+  lineinfile:
+    path: /etc/beegfs/beegfs-mounts.conf
+    regexp: '^{{ beegfs_client_mount }}'
+    line: "{{ beegfs_client_mount }} /etc/beegfs/beegfs-client.conf"
+    create: true
+    mode: "0644"
+  notify: restart beegfs-client

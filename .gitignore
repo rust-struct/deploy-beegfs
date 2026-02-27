@@ -1,0 +1,16 @@
+# Ansible retry files
+*.retry
+
+# Sensitive / generated files
+inventory/host_vars/*/vault.yml
+/tmp/beegfs_connauthfile
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor
+.idea/
+.vscode/
+*.swp

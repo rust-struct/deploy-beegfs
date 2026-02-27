@@ -1,0 +1,15 @@
+---
+- name: Create metadata data directory
+  file:
+    path: "{{ beegfs_meta_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Initialize metadata service
+  command: >
+    /opt/beegfs/sbin/beegfs-setup-meta
+    -p {{ beegfs_meta_dir }}
+    -s {{ beegfs_meta_node_id }}
+    -m {{ beegfs_mgmt_host }}
+  args:
+    creates: "{{ beegfs_meta_dir }}/format.conf"

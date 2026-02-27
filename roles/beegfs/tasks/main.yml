@@ -1,0 +1,32 @@
+---
+- import_tasks: repo.yml
+  tags: [beegfs, repo]
+
+- import_tasks: install.yml
+  tags: [beegfs, install]
+
+- import_tasks: storage_mount.yml
+  when: beegfs_storage_device | length > 0
+  tags: [beegfs, storage_mount]
+
+- import_tasks: setup_mgmtd.yml
+  when: inventory_hostname in groups['beegfs_mgmtd']
+  tags: [beegfs, setup, mgmtd]
+
+- import_tasks: setup_meta.yml
+  when: inventory_hostname in groups['beegfs_meta']
+  tags: [beegfs, setup, meta]
+
+- import_tasks: setup_storage.yml
+  when: inventory_hostname in groups['beegfs_storage']
+  tags: [beegfs, setup, storage]
+
+- import_tasks: auth.yml
+  tags: [beegfs, auth]
+
+- import_tasks: client_config.yml
+  when: inventory_hostname in groups['beegfs_client']
+  tags: [beegfs, client]
+
+- import_tasks: services.yml
+  tags: [beegfs, services]

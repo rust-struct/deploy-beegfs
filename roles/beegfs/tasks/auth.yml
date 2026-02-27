@@ -1,0 +1,68 @@
+---
+# === Вариант B: отключить аутентификацию ===
+- name: Disable connection authentication in all BeeGFS configs
+  replace:
+    path: "{{ item }}"
+    regexp: '^#?connDisableAuthentication\s*=.*'
+    replace: 'connDisableAuthentication = true'
+  loop:
+    - /etc/beegfs/beegfs-mgmtd.conf
+    - /etc/beegfs/beegfs-meta.conf
+    - /etc/beegfs/beegfs-storage.conf
+    - /etc/beegfs/beegfs-client.conf
+  when:
+    - beegfs_disable_auth | bool
+    - item is file
+  notify: restart beegfs services
+
+# === Вариант A: connAuthFile ===
+- name: Ensure /etc/beegfs directory exists
+  file:
+    path: /etc/beegfs
+    state: directory
+    mode: "0755"
+  when: not beegfs_disable_auth | bool
+
+- name: Generate connAuthFile on management node
+  shell: |
+    umask 077
+    head -c 64 /dev/urandom | base64 > {{ beegfs_connauth_file }}
+    chmod 600 {{ beegfs_connauth_file }}
+  args:
+    creates: "{{ beegfs_connauth_file }}"
+  when:
+    - not beegfs_disable_auth | bool
+    - inventory_hostname in groups['beegfs_mgmtd']
+
+- name: Fetch connAuthFile from management node to controller
+  fetch:
+    src: "{{ beegfs_connauth_file }}"
+    dest: "/tmp/beegfs_connauthfile"
+    flat: true
+  when:
+    - not beegfs_disable_auth | bool
+    - inventory_hostname in groups['beegfs_mgmtd']
+
+- name: Distribute connAuthFile to all nodes
+  copy:
+    src: "/tmp/beegfs_connauthfile"
+    dest: "{{ beegfs_connauth_file }}"
+    mode: "0600"
+  when:
+    - not beegfs_disable_auth | bool
+    - inventory_hostname not in groups['beegfs_mgmtd']
+
+- name: Set connAuthFile path in all BeeGFS configs
+  replace:
+    path: "{{ item }}"
+    regexp: '^#?connAuthFile\s*=.*'
+    replace: 'connAuthFile = {{ beegfs_connauth_file }}'
+  loop:
+    - /etc/beegfs/beegfs-mgmtd.conf
+    - /etc/beegfs/beegfs-meta.conf
+    - /etc/beegfs/beegfs-storage.conf
+    - /etc/beegfs/beegfs-client.conf
+  when:
+    - not beegfs_disable_auth | bool
+    - item is file
+  notify: restart beegfs services

@@ -1,0 +1,43 @@
+---
+- name: Install OS dependencies
+  apt:
+    name:
+      - chrony
+      - vim
+      - net-tools
+      - jq
+      - xfsprogs
+      - "linux-headers-{{ ansible_kernel }}"
+      - gcc
+      - make
+      - dkms
+    state: present
+    update_cache: false
+
+- name: Enable and start chrony
+  systemd:
+    name: chrony
+    enabled: true
+    state: started
+
+# Пакеты для узла, который является management/metadata/storage (nodeA)
+- name: Install BeeGFS packages — mgmtd + meta + storage + client
+  apt:
+    name:
+      - beegfs-mgmtd
+      - beegfs-meta
+      - beegfs-storage
+      - beegfs-client
+      - beegfs-utils
+    state: present
+  when: inventory_hostname in groups['beegfs_mgmtd']
+
+# Пакеты для узла только storage + client (nodeB и прочие)
+- name: Install BeeGFS packages — storage + client only
+  apt:
+    name:
+      - beegfs-storage
+      - beegfs-client
+      - beegfs-utils
+    state: present
+  when: inventory_hostname not in groups['beegfs_mgmtd']

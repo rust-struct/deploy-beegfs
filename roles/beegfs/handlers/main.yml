@@ -1,0 +1,28 @@
+---
+- name: restart beegfs-mgmtd
+  systemd:
+    name: beegfs-mgmtd
+    state: restarted
+  when: inventory_hostname in groups['beegfs_mgmtd']
+  listen: restart beegfs services
+
+- name: restart beegfs-meta
+  systemd:
+    name: beegfs-meta
+    state: restarted
+  when: inventory_hostname in groups['beegfs_meta']
+  listen: restart beegfs services
+
+- name: restart beegfs-storage
+  systemd:
+    name: beegfs-storage
+    state: restarted
+  when: inventory_hostname in groups['beegfs_storage']
+  listen: restart beegfs services
+
+- name: restart beegfs-client
+  systemd:
+    name: beegfs-client
+    state: restarted
+  when: inventory_hostname in groups['beegfs_client']
+  listen: restart beegfs services

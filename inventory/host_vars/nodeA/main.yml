@@ -1,0 +1,12 @@
+---
+# Storage node ID и target ID для nodeA (из лабы: -s 1 -i 101)
+beegfs_storage_node_id: 1
+beegfs_storage_target_id: 101
+
+# Metadata node ID для nodeA (из лабы: -s 1)
+beegfs_meta_node_id: 1
+
+# Путь к диску storage target.
+# Заполните по выводу: ls -l /dev/disk/by-id/
+# Пример: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
+beegfs_storage_device: ""

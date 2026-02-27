@@ -1,0 +1,32 @@
+---
+# Management — только nodeA
+- name: Enable and start beegfs-mgmtd
+  systemd:
+    name: beegfs-mgmtd
+    enabled: true
+    state: started
+  when: inventory_hostname in groups['beegfs_mgmtd']
+
+# Metadata — только nodeA
+- name: Enable and start beegfs-meta
+  systemd:
+    name: beegfs-meta
+    enabled: true
+    state: started
+  when: inventory_hostname in groups['beegfs_meta']
+
+# Storage — все узлы в группе beegfs_storage
+- name: Enable and start beegfs-storage
+  systemd:
+    name: beegfs-storage
+    enabled: true
+    state: started
+  when: inventory_hostname in groups['beegfs_storage']
+
+# Client — все узлы в группе beegfs_client
+- name: Enable and start beegfs-client
+  systemd:
+    name: beegfs-client
+    enabled: true
+    state: started
+  when: inventory_hostname in groups['beegfs_client']

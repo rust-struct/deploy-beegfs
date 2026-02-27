@@ -1,0 +1,16 @@
+---
+- name: Create storage data directory
+  file:
+    path: "{{ beegfs_storage_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Initialize storage service
+  command: >
+    /opt/beegfs/sbin/beegfs-setup-storage
+    -p {{ beegfs_storage_dir }}
+    -s {{ beegfs_storage_node_id }}
+    -i {{ beegfs_storage_target_id }}
+    -m {{ beegfs_mgmt_host }}
+  args:
+    creates: "{{ beegfs_storage_dir }}/format.conf"

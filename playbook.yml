@@ -1,0 +1,10 @@
+---
+# Важно: сначала деплоим nodeA (management должен стартовать раньше остальных узлов)
+- name: Deploy BeeGFS
+  hosts: beegfs
+  order: inventory  # nodeA идёт первым в инвентаре
+  serial:
+    - 1  # сначала nodeA (mgmtd должен быть готов до storage/client на nodeB)
+    - "100%"
+  roles:
+    - beegfs

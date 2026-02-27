@@ -1,0 +1,8 @@
+---
+# Storage node ID и target ID для nodeB (из лабы: -s 2 -i 201)
+beegfs_storage_node_id: 2
+beegfs_storage_target_id: 201
+
+# Путь к диску storage target.
+# Заполните по выводу: ls -l /dev/disk/by-id/
+beegfs_storage_device: ""

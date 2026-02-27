@@ -1,0 +1,13 @@
+---
+- name: Create management data directory
+  file:
+    path: "{{ beegfs_mgmtd_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Initialize management service
+  command: >
+    /opt/beegfs/sbin/beegfs-setup-mgmtd
+    -p {{ beegfs_mgmtd_dir }}
+  args:
+    creates: "{{ beegfs_mgmtd_dir }}/format.conf"

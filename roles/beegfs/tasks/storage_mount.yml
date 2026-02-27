@@ -1,0 +1,31 @@
+---
+# Выполняется только если beegfs_storage_device задан (не пустая строка)
+
+- name: Check if storage device is already formatted
+  command: blkid -o value -s TYPE {{ beegfs_storage_device }}
+  register: _storage_fstype
+  changed_when: false
+  failed_when: false
+
+- name: Format storage device as XFS
+  command: mkfs.xfs {{ beegfs_storage_device }}
+  when: _storage_fstype.stdout != "xfs"
+
+- name: Create storage target directory
+  file:
+    path: "{{ beegfs_storage_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Get UUID of storage device
+  command: blkid -o value -s UUID {{ beegfs_storage_device }}
+  register: _storage_uuid
+  changed_when: false
+
+- name: Mount storage device
+  mount:
+    path: "{{ beegfs_storage_dir }}"
+    src: "UUID={{ _storage_uuid.stdout }}"
+    fstype: xfs
+    opts: defaults,nofail
+    state: mounted
