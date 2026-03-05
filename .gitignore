@@ -1,6 +1,9 @@
 # Ansible retry files
 *.retry
 
+# Генерируется Terraform — содержит реальные IP инфраструктуры
+inventory/hosts.ini
+
 # Sensitive / generated files
 inventory/host_vars/*/vault.yml
 /tmp/beegfs_connauthfile

@@ -6,7 +6,7 @@ beegfs_storage_target_id: 101
 # Metadata node ID для nodeA (из лабы: -s 1)
 beegfs_meta_node_id: 1
 
-# Путь к диску storage target.
-# Заполните по выводу: ls -l /dev/disk/by-id/
-# Пример: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
-beegfs_storage_device: ""
+# Диск для storage target.
+# Terraform подключает диск через virtio_scsi — он всегда виден как /dev/sdb.
+# Если топология отличается, проверьте через lsblk после первого старта ВМ.
+beegfs_storage_device: "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_df6ff6a4-d25e-41a5-9515-b2adcae1c3d6"

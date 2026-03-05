@@ -1,0 +1,30 @@
+# Шаблон инвентаря для ручной настройки (без Terraform).
+# При использовании Terraform файл hosts.ini генерируется автоматически.
+#
+# Для ручного использования:
+#   cp inventory/hosts.ini.example inventory/hosts.ini
+# и заполните реальными IP и именами хостов.
+
+[beegfs_mgmtd]
+nodeA ansible_host=<IP_nodeA>
+
+[beegfs_meta]
+nodeA
+
+[beegfs_storage]
+nodeA
+nodeB ansible_host=<IP_nodeB>
+
+[beegfs_client]
+nodeA
+nodeB
+
+[beegfs:children]
+beegfs_mgmtd
+beegfs_meta
+beegfs_storage
+beegfs_client
+
+[beegfs:vars]
+ansible_user=admin
+ansible_become=true
