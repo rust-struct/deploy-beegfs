@@ -1,16 +1,16 @@
-# BeeGFS TLS: Manual Enablement (CLI on Nodes)
+# BeeGFS TLS: ручное включение (CLI на самих нодах)
 
-This guide enables TLS manually after playbooks are already applied.
-No Ansible commands are used below.
+Инструкция включает TLS вручную после того, как плейбуки уже отработали.
+Ниже только команды, выполняемые на самих узлах, без Ansible.
 
-## Nodes
+## Узлы
 
 - `nodeA` (management/meta/storage/client): `172.24.14.40`
 - `nodeB` (storage/client): `172.24.14.41`
 
-## 1) Generate certificate and key on nodeA
+## 1) Сгенерировать сертификат и ключ на nodeA
 
-Login to `nodeA` and run:
+Зайди на `nodeA` и выполни:
 
 ```bash
 sudo install -d -m 0755 /etc/beegfs
@@ -25,15 +25,15 @@ sudo chmod 600 /etc/beegfs/key.pem
 sudo chmod 644 /etc/beegfs/cert.pem
 ```
 
-## 2) Enable TLS in mgmtd config on nodeA
+## 2) Включить TLS в конфиге mgmtd на nodeA
 
-On `nodeA` edit `/etc/beegfs/beegfs-mgmtd.toml`:
+Открой `/etc/beegfs/beegfs-mgmtd.toml`:
 
 ```bash
 sudo vi /etc/beegfs/beegfs-mgmtd.toml
 ```
 
-Set/add these lines:
+Проверь/добавь строки:
 
 ```toml
 tls-disable = false
@@ -41,35 +41,35 @@ tls-cert-file = "/etc/beegfs/cert.pem"
 tls-key-file = "/etc/beegfs/key.pem"
 ```
 
-Restart mgmtd:
+Перезапусти сервис:
 
 ```bash
 sudo systemctl restart beegfs-mgmtd
 sudo systemctl is-active beegfs-mgmtd
 ```
 
-Expected output: `active`.
+Ожидаемый результат: `active`.
 
-## 3) Copy certificate to nodeB (for CLI verification)
+## 3) Скопировать сертификат на nodeB (для проверки CLI)
 
-Only `cert.pem` is needed on `nodeB` (never copy `key.pem`).
+На `nodeB` нужен только `cert.pem`. Приватный ключ `key.pem` копировать нельзя.
 
-From `nodeA`:
+С `nodeA`:
 
 ```bash
 scp /etc/beegfs/cert.pem root@172.24.14.41:/etc/beegfs/cert.pem
 ```
 
-Then on `nodeB`:
+На `nodeB`:
 
 ```bash
 sudo chown root:root /etc/beegfs/cert.pem
 sudo chmod 644 /etc/beegfs/cert.pem
 ```
 
-## 4) Validate TLS mode from nodeA
+## 4) Проверить работу без `--tls-disable`
 
-Run on `nodeA` (without `--tls-disable`):
+На `nodeA`:
 
 ```bash
 sudo beegfs health check
@@ -77,30 +77,30 @@ sudo beegfs health capacity
 sudo beegfs node list --with-nics
 ```
 
-If cert name mismatch occurs, temporary check:
+Если будет ошибка несоответствия имени/адреса в сертификате, временно можно проверить так:
 
 ```bash
 sudo beegfs --tls-disable-verification health check
 ```
 
-Then regenerate certificate with correct SAN and remove `--tls-disable-verification`.
+После этого лучше перевыпустить сертификат с корректным `SAN`, чтобы убрать `--tls-disable-verification`.
 
-## 5) Optional validation from nodeB
+## 5) Дополнительная проверка с nodeB
 
 ```bash
 sudo beegfs --mgmtd-addr 172.24.14.40:8010 health check
 ```
 
-## Rollback to non-TLS lab mode
+## Откат обратно в lab-режим без TLS
 
-On `nodeA`:
+На `nodeA`:
 
 ```bash
 sudo sed -i 's/^tls-disable\s*=.*/tls-disable = true/' /etc/beegfs/beegfs-mgmtd.toml
 sudo systemctl restart beegfs-mgmtd
 ```
 
-Then use:
+После отката команды снова запускать с `--tls-disable`, например:
 
 ```bash
 sudo beegfs --tls-disable health check
