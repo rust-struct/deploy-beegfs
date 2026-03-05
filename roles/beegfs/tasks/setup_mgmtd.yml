@@ -1,13 +1,54 @@
 ---
-- name: Create management data directory
+- name: Detect legacy mgmtd setup helper
+  stat:
+    path: /opt/beegfs/sbin/beegfs-setup-mgmtd
+  register: beegfs_setup_mgmtd_legacy
+
+- name: Create management data directory (BeeGFS 7)
   file:
     path: "{{ beegfs_mgmtd_dir }}"
     state: directory
     mode: "0755"
+  when: beegfs_setup_mgmtd_legacy.stat.exists
 
-- name: Initialize management service
+- name: Initialize management service (BeeGFS 7)
   command: >
     /opt/beegfs/sbin/beegfs-setup-mgmtd
     -p {{ beegfs_mgmtd_dir }}
   args:
     creates: "{{ beegfs_mgmtd_dir }}/format.conf"
+  when: beegfs_setup_mgmtd_legacy.stat.exists
+
+- name: Initialize management service (BeeGFS 8)
+  command: /opt/beegfs/sbin/beegfs-mgmtd --init
+  args:
+    creates: /var/lib/beegfs/mgmtd.sqlite
+  when: not beegfs_setup_mgmtd_legacy.stat.exists
+
+- name: Configure BeeGFS 8 mgmtd auth file
+  lineinfile:
+    path: /etc/beegfs/beegfs-mgmtd.toml
+    regexp: '^auth-file\s*='
+    line: 'auth-file = "{{ beegfs_connauth_file }}"'
+  when: not beegfs_setup_mgmtd_legacy.stat.exists
+
+- name: Configure BeeGFS 8 mgmtd auth mode
+  lineinfile:
+    path: /etc/beegfs/beegfs-mgmtd.toml
+    regexp: '^auth-disable\s*='
+    line: 'auth-disable = {{ (beegfs_disable_auth | bool) | ternary("true", "false") }}'
+  when: not beegfs_setup_mgmtd_legacy.stat.exists
+
+- name: Disable TLS for BeeGFS 8 mgmtd in lab setup
+  lineinfile:
+    path: /etc/beegfs/beegfs-mgmtd.toml
+    regexp: '^tls-disable\s*='
+    line: 'tls-disable = true'
+  when: not beegfs_setup_mgmtd_legacy.stat.exists
+
+- name: Disable licensing checks for BeeGFS 8 mgmtd in lab setup
+  lineinfile:
+    path: /etc/beegfs/beegfs-mgmtd.toml
+    regexp: '^license-disable\s*='
+    line: 'license-disable = true'
+  when: not beegfs_setup_mgmtd_legacy.stat.exists

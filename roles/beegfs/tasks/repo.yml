@@ -24,7 +24,7 @@
   apt_repository:
     repo: >-
       deb [signed-by=/usr/share/keyrings/beegfs.gpg arch=amd64]
-      https://www.beegfs.io/release/beegfs_{{ beegfs_version }}/dists/{{ beegfs_dist_codename }}
+      https://www.beegfs.io/release/beegfs_{{ beegfs_version }}
       {{ beegfs_dist_codename }} non-free
     state: present
     filename: beegfs

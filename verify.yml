@@ -12,6 +12,19 @@
   become: true
   gather_facts: false
   tasks:
+
+    - name: Resolve beegfs CLI binary
+      shell: |
+        if command -v beegfs >/dev/null 2>&1; then
+          command -v beegfs
+        elif [ -x /opt/beegfs/sbin/beegfs ]; then
+          echo /opt/beegfs/sbin/beegfs
+        else
+          exit 1
+        fi
+      changed_when: false
+      register: _beegfs_cli
+
     - name: Check beegfs-mgmtd is active
       command: systemctl is-active beegfs-mgmtd
       changed_when: false
@@ -129,7 +142,7 @@
     beegfs_expected_meta_nodes: "{{ groups['beegfs_meta'] | length }}"
   tasks:
     - name: Run beegfs health check
-      command: beegfs health check
+      command: "{{ _beegfs_cli.stdout }} --tls-disable health check"
       changed_when: false
       register: _health_check
       failed_when: false
@@ -145,52 +158,65 @@
         success_msg: "beegfs health check passed"
 
     - name: Run beegfs health capacity
-      command: beegfs health capacity
+      command: "{{ _beegfs_cli.stdout }} --tls-disable health capacity"
       changed_when: false
       register: _health_capacity
+      failed_when: false
 
     - name: Print capacity output
       debug:
         msg: "{{ _health_capacity.stdout_lines }}"
 
+    - name: Assert capacity command returned data
+      assert:
+        that:
+          - _health_capacity.stdout | length > 0
+        fail_msg: "beegfs health capacity returned empty output: {{ _health_capacity.stderr }}"
+        success_msg: "beegfs health capacity produced output"
+
     - name: List BeeGFS nodes with NICs
-      command: beegfs node list --with-nics
+      command: "{{ _beegfs_cli.stdout }} --tls-disable node list --with-nics"
       changed_when: false
       register: _node_list
+      failed_when: false
 
     - name: Print node list
       debug:
         msg: "{{ _node_list.stdout_lines }}"
 
-    - name: Check expected number of storage nodes are registered
-      command: beegfs-ctl --listnodes --nodetype=storage
+    - name: Assert node list returned data
+      assert:
+        that:
+          - _node_list.stdout | length > 0
+        fail_msg: "beegfs node list returned empty output: {{ _node_list.stderr }}"
+        success_msg: "beegfs node list produced output"
+
+    - name: Get BeeGFS node list
+      command: "{{ _beegfs_cli.stdout }} --tls-disable node list"
       changed_when: false
-      register: _storage_nodes
+      register: _all_nodes
+      failed_when: false
 
     - name: Assert expected storage nodes count
       assert:
         that: >
-          _storage_nodes.stdout_lines | select('match', '^\\s*\\S') | list | length
+          _all_nodes.stdout_lines | select('match', '^s:[0-9]+\s+storage\s+') | list | length
           >= beegfs_expected_storage_nodes | int
         fail_msg: >
           Expected {{ beegfs_expected_storage_nodes }} storage nodes,
-          got: {{ _storage_nodes.stdout }}
+          got: {{ _all_nodes.stdout }}
         success_msg: "All {{ beegfs_expected_storage_nodes }} storage nodes are registered"
-
-    - name: Check expected number of metadata nodes are registered
-      command: beegfs-ctl --listnodes --nodetype=meta
-      changed_when: false
-      register: _meta_nodes
 
     - name: Assert expected metadata nodes count
       assert:
         that: >
-          _meta_nodes.stdout_lines | select('match', '^\\s*\\S') | list | length
+          _all_nodes.stdout_lines | select('match', '^m:[0-9]+\s+meta\s+') | list | length
           >= beegfs_expected_meta_nodes | int
         fail_msg: >
           Expected {{ beegfs_expected_meta_nodes }} metadata nodes,
-          got: {{ _meta_nodes.stdout }}
+          got: {{ _all_nodes.stdout }}
         success_msg: "All {{ beegfs_expected_meta_nodes }} metadata nodes are registered"
+
 
 # -----------------------------------------------------------------------------
 # PLAY 4: Smoke test — запись и чтение файла через BeeGFS

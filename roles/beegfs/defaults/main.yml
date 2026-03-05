@@ -1,17 +1,17 @@
 ---
 # Версия BeeGFS
-beegfs_version: "7.4"
+beegfs_version: "8"
 
 # Дистрибутив для репозитория (по умолчанию берётся из факта ansible)
 # Переопределите если нужен другой codename, например "jammy" для Ubuntu 22.04
 beegfs_dist_codename: "{{ ansible_distribution_release }}"
 
-# Хост management-узла (обычно первый из группы beegfs_mgmtd)
-beegfs_mgmt_host: "{{ groups['beegfs_mgmtd'][0] }}"
+# Хост management-узла (предпочтительно ansible_host из inventory)
+beegfs_mgmt_host: "{{ hostvars[groups['beegfs_mgmtd'][0]].ansible_host | default(groups['beegfs_mgmtd'][0]) }}"
 
 # Пути к данным сервисов
 beegfs_mgmtd_dir: /data/beegfs_mgmtd
-beegfs_meta_dir:  /data/beegfs_meta
+beegfs_meta_dir: /data/beegfs_meta
 beegfs_storage_dir: /data/beegfs_storage
 
 # Точка монтирования клиента
@@ -36,4 +36,4 @@ beegfs_storage_device: ""
 # true  → connDisableAuthentication=true  (вариант B из лабы, подходит для теста)
 # false → connAuthFile (вариант A, генерируется на mgmt-узле и раздаётся всем)
 beegfs_disable_auth: true
-beegfs_connauth_file: /etc/beegfs/connauthfile
+beegfs_connauth_file: /etc/beegfs/conn.auth

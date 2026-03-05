@@ -29,6 +29,7 @@
       - beegfs-storage
       - beegfs-client
       - beegfs-utils
+      - beegfs-tools
     state: present
   when: inventory_hostname in groups['beegfs_mgmtd']
 
@@ -39,5 +40,6 @@
       - beegfs-storage
       - beegfs-client
       - beegfs-utils
+      - beegfs-tools
     state: present
   when: inventory_hostname not in groups['beegfs_mgmtd']

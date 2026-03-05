@@ -13,3 +13,10 @@
     -m {{ beegfs_mgmt_host }}
   args:
     creates: "{{ beegfs_meta_dir }}/format.conf"
+
+- name: Set sysMgmtdHost in beegfs-meta.conf
+  lineinfile:
+    path: /etc/beegfs/beegfs-meta.conf
+    regexp: '^sysMgmtdHost\s*=.*'
+    line: 'sysMgmtdHost = {{ beegfs_mgmt_host }}'
+  notify: restart beegfs services
